@@ -51,11 +51,12 @@ func main() {
 		c.Next()
 	}
 
-	// エンドポイントを定義
+	// 認証なしでアクセス可能なエンドポイントを定義
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Hello, World!"})
 	})
 
+	// 認証ありでアクセス可能なエンドポイントを定義
 	r.GET("/protected", authMiddleware, func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "You are authorized to access this resource."})
 	})
@@ -84,6 +85,7 @@ func main() {
 			UserPoolId: aws.String(userPoolID),
 		}
 
+		// Cognitoへログイン
 		res, err := svc.AdminInitiateAuth(params)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "Invalid username or password"})
@@ -94,7 +96,49 @@ func main() {
 			return
 		}
 
+		// アクセストークンを返す
 		c.JSON(http.StatusOK, gin.H{"token": *res.AuthenticationResult.AccessToken})
+	})
+
+	// 登録エンドポイントを定義
+	r.POST("/register", func(c *gin.Context) {
+		var registerInput struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+
+		if err := c.BindJSON(&registerInput); err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		fmt.Println(registerInput.Email)
+		fmt.Println(registerInput.Password)
+
+		params := &cognitoidentityprovider.SignUpInput{
+			ClientId: aws.String(clientID),
+			Username: aws.String(registerInput.Email),
+			Password: aws.String(registerInput.Password),
+			UserAttributes: []*cognitoidentityprovider.AttributeType{
+				{
+					Name:  aws.String("name"),
+					Value: aws.String(registerInput.Email),
+				},
+				{
+					Name:  aws.String("email"),
+					Value: aws.String(registerInput.Email),
+				},
+			},
+		}
+
+		res, err := svc.SignUp(params)
+		if err != nil {
+			fmt.Printf("err: %v", err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "success", "user": res.UserSub})
+
 	})
 
 	// サーバーを起動
