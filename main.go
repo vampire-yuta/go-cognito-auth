@@ -137,8 +137,36 @@ func main() {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "success", "user": res.UserSub})
+		c.JSON(http.StatusOK, gin.H{"message": "success", "user": res.UserSub, "code": res.CodeDeliveryDetails.Destination})
+	})
 
+	r.POST("/confirm", func(c *gin.Context) {
+		var confirmInput struct {
+			Email string `json:"email"`
+			Code  string `json:"code"`
+		}
+
+		if err := c.BindJSON(&confirmInput); err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		fmt.Println(confirmInput.Email)
+		fmt.Println(confirmInput.Code)
+
+		params := &cognitoidentityprovider.ConfirmSignUpInput{
+			ClientId:         aws.String(clientID),
+			Username:         aws.String(confirmInput.Email),
+			ConfirmationCode: aws.String(confirmInput.Code),
+		}
+
+		res, err := svc.ConfirmSignUp(params)
+		if err != nil {
+			fmt.Printf("err: %v", err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "success", "res": res, "detail": "Email confirmed. You can now login."})
 	})
 
 	// サーバーを起動
