@@ -28,3 +28,15 @@ TOKEN=$(curl -X POST -H "Content-Type: application/json" -d '{"username": "testu
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/protected
 ```
 
+
+サインアップ
+
+```
+curl -X POST -H "Content-Type: application/json" -d '{"email": "test01@example.com", "password": "P@ssw0rd01", "name": "yuta"}' http://localhost:8080/register
+```
+
+検証コード送信
+
+```
+curl -X POST -H "Content-Type: application/json" -d '{"email": "test01@example.com", "code": "131491"}' http://localhost:8080/confirm
+```
